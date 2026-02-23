@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IELTS 单词系统</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:-apple-system;margin:0;background:#f5f5f7}
+nav{display:flex;justify-content:space-around;background:#000;color:#fff;padding:10px}
+section{display:none;padding:20px}
+.active{display:block}
+button{padding:10px;margin-top:10px;width:100%;border-radius:10px;border:none;background:#000;color:#fff}
+input{width:100%;padding:10px;margin-top:10px;border-radius:10px;border:1px solid #ccc}
+.word{font-size:28px;text-align:center;margin:20px 0}
+</style>
+</head>
+<body>
+
+<nav>
+<span onclick="show('home')">学习</span>
+<span onclick="show('stats')">统计</span>
+<span onclick="show('add')">添加</span>
+</nav>
+
+<section id="home" class="active">
+<div class="word" id="word"></div>
+<div id="example"></div>
+<input id="answer" placeholder="输入中文意思">
+<button onclick="speak()">🔊 真人发音</button>
+<button onclick="generateExample()">🤖 GPT例句</button>
+<button onclick="check()">提交</button>
+</section>
+
+<section id="stats">
+<canvas id="chart"></canvas>
+</section>
+
+<section id="add">
+<input id="newWord" placeholder="英文">
+<input id="newMeaning" placeholder="中文">
+<button onclick="addWord()">添加</button>
+</section>
+
+<script type="module">
+
+// 🔹 Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = { apiKey:"你的Key", authDomain:"xxx", projectId:"xxx" };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let words=[];
+let current=null;
+
+async function loadWords(){
+const snap=await getDocs(collection(db,"words"));
+snap.forEach(doc=>words.push(doc.data()));
+}
+await loadWords();
+
+function show(id){
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+if(id==="stats") renderChart();
+}
+
+// 🔹 学习算法（升级版间隔重复）
+function next(){
+let due=words.filter(w=>w.nextReview<=Date.now());
+if(due.length===0) return;
+current=due[0];
+word.innerText=current.word;
+}
+
+window.check=function(){
+if(answer.value.trim()===current.meaning){
+current.level++;
+}else{
+current.level=0;
+}
+let intervals=[5,30,720,1440,4320,10080];
+current.nextReview=Date.now()+intervals[Math.min(current.level,5)]*60000;
+}
+
+// 🔹 GPT 例句
+window.generateExample=async function(){
+let res=await fetch("https://api.openai.com/v1/chat/completions",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer 你的OpenAIKey"
+},
+body:JSON.stringify({
+model:"gpt-4o-mini",
+messages:[
+{role:"system",content:"You are an IELTS teacher."},
+{role:"user",content:`Write 2 band 7+ IELTS sentences using "${current.word}".`}
+]
+})
+});
+let data=await res.json();
+example.innerText=data.choices[0].message.content;
+}
+
+// 🔹 真人发音（Google）
+window.speak=function(){
+let audio=new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&q=${current.word}&tl=en&client=tw-ob`);
+audio.play();
+}
+
+// 🔹 图表
+function renderChart(){
+let ctx=document.getElementById("chart");
+new Chart(ctx,{
+type:"line",
+data:{
+labels:["Day1","Day2","Day3"],
+datasets:[{label:"学习量",data:[3,5,8]}]
+}
+});
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+"name":"IELTS单词系统",
+"short_name":"IELTS",
+"start_url":"index.html",
+"display":"standalone",
+"background_color":"#ffffff",
+"theme_color":"#000000"
+}
